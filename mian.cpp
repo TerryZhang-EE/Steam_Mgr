@@ -3,6 +3,7 @@
 
 //#pragma execution_character_set("utf-8") //设置程序运行的编码格式
 
+//bool Flag_Exit = false;
 bool Flag_Dirty = false;
 
 /*Windows窗口大小*/
@@ -80,7 +81,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	glfwSwapInterval(1);
 
 	// 创建一个线程来定期执行检查任务
-	std::thread checkThread(Periodic_Check);
+	std::jthread Check_Thread(Periodic_Check); //C++20 自动管理
 
 	/*主循环（暂时只是保持窗口运行）*/
 	while (!glfwWindowShouldClose(window))
@@ -116,7 +117,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
-	checkThread.join();	// 等待定时检查线程结束
+	Check_Thread.request_stop();//通知线程结束
+
+	//Flag_Exit = true;//通知 CheckThread 线程退出
+
+	//Check_Thread.request_stop();	// 等待定时检查线程结束
 
 	return 0;
 }
@@ -252,18 +257,23 @@ void Draw_Table(void)
 
 				ImGui::TableSetColumnIndex(3);
 
-				if (Steam_Array[i].Flag_Ban != true)
+				if (Steam_Array[i].Flag_Ban == 0)
 				{
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));  // 绿色
 					ImGui::Text("可用");
 
 				}
-				else
+				else if (Steam_Array[i].Flag_Ban == 1)
 				{
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));  // 红色
 					ImGui::Text("封禁");
-
 				}
+				else
+				{
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));  // 红色
+					ImGui::Text("永久");
+				}
+
 				ImGui::PopStyleColor();  // 恢复默认颜色
 			}
 
@@ -324,7 +334,7 @@ void Draw_Buttons(void)
 
 		ImGui::SetCursorPos(Button_Pos);
 
-		if (ImGui::Button("一天", Button_Size) == true)//一天
+		if (ImGui::Button("一天", Button_Size) == true)//检测一天
 		{
 			Steam_Array[Selected_Row].Set_Ban_Tim(24);
 			Flag_Dirty = true;//脏数据 需要保存
@@ -332,7 +342,7 @@ void Draw_Buttons(void)
 
 		ImGui::SameLine(Spacing_X + Button_Width + Spacing_X);//同行显示
 
-		if (ImGui::Button("三天", Button_Size) == true)//三天
+		if (ImGui::Button("三天", Button_Size) == true)//检测三天
 		{
 			Steam_Array[Selected_Row].Set_Ban_Tim(72);
 			Flag_Dirty = true;//脏数据 需要保存
@@ -343,18 +353,18 @@ void Draw_Buttons(void)
 
 		ImGui::SetCursorPos(Button_Pos);
 
-		if (ImGui::Button("清除", Button_Size) == true)//清除
+		if (ImGui::Button("永久", Button_Size) == true)//永久封禁
 		{
-			Steam_Array[Selected_Row].Flag_Ban = false;
+			Steam_Array[Selected_Row].Flag_Ban = 2; //永久封禁
 			Flag_Dirty = true;//脏数据 需要保存
 		}
 
 		ImGui::SameLine(Spacing_X + Button_Width + Spacing_X);//同行显示
 
-		if (ImGui::Button("刷新", Button_Size) == true)//刷新
+		if (ImGui::Button("清除", Button_Size) == true)//清除
 		{
-			Check_Unban_Status();//手动检查封禁时间
-
+			Steam_Array[Selected_Row].Flag_Ban = 0; //未封禁
+			Flag_Dirty = true;//脏数据 需要保存
 		}
 
 	}
@@ -465,25 +475,23 @@ void Steam_Conf::Login_Steam(void)
 
 	// 使用线程来启动 Steam
 	std::thread Steam_Thread(Launch_Process, wcommand);
-	Steam_Thread.detach();  // 分离线程，让它在后台执行
+	Steam_Thread.detach();  //让线程独立运行
 
 	// 主程序继续执行，界面可以操作
 	std::cout << "Steam 启动中..." << std::endl;
 
 	// 如果需要等待线程完成，可以使用 join()
-	//steamThread.join();  // 等待线程完成，可以去掉这个，程序会直接执行完退出
+	//Steam_Thread.join();  // 等待线程完成，可以去掉这个，程序会直接执行完退出
 
 }
 
 /*设置封号时间*/
 void Steam_Conf::Set_Ban_Tim(long long Hour)
 {
-	Flag_Ban = true; //账号被封禁
+	Flag_Ban = 1; //账号被封禁
 
 	std::time_t Now = std::time(nullptr);//获取当前时间（从1970年1月1日起的秒数）
 	End_Time = Now + (Hour * 3600);//1小时 == 3600秒
-
-	//Flag_Dirty = true;//脏数据 需要保存
 }
 
 /*检查封禁情况*/
@@ -493,11 +501,11 @@ void Check_Unban_Status(void)
 
 	for (int i = 0; i < Steam_Array.size(); i++)//遍历所有账号
 	{
-		if (Steam_Array[i].Flag_Ban == true) //如果当前账号被Ban
+		if (Steam_Array[i].Flag_Ban == 1) //如果当前账号被检测
 		{
 			if (Now > Steam_Array[i].End_Time) //封禁时间已过
 			{
-				Steam_Array[i].Flag_Ban = false;//账号未封禁
+				Steam_Array[i].Flag_Ban = 0;//账号正常
 
 				Flag_Dirty = true;//脏数据 需要保存
 			}
@@ -507,9 +515,9 @@ void Check_Unban_Status(void)
 }
 
 /*定期检查任务*/
-void Periodic_Check(void)
+void Periodic_Check(std::stop_token token)
 {
-	while (true)
+	while (!token.stop_requested())// ✅ 当 `stop_requested()` 返回 true，退出循环
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(10));  // 当前线程“睡眠”指定的时间
 
@@ -518,6 +526,10 @@ void Periodic_Check(void)
 		if (Flag_Dirty == true)
 		{
 			Write_Accounts_To_File(File_Name);
+
+			Flag_Dirty = false;
 		}
 	}
+
+	std::cout << "定时检查线程退出" << std::endl;
 }

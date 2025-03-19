@@ -20,7 +20,7 @@ public:
 	std::string User_Name;       // 用户名
 	std::string Password;        // 密码
 	std::time_t End_Time = 0;//结束时间
-	bool Flag_Ban = false; //被封禁
+	int Flag_Ban; //0:正常 1:检测 2:封禁
 
 	void Login_Steam(void);
 	void Set_Ban_Tim(long long Hour);
@@ -35,4 +35,5 @@ void Launch_Process(const std::wstring& command);
 void Terminate_Process(const std::string& processName);// 结束指定的进程
 std::string Get_Steam_Path(void);
 void Check_Unban_Status(void);//遍历检查账号封禁情况
-void Periodic_Check(void);
+//void Periodic_Check(void);
+void Periodic_Check(std::stop_token token);
