@@ -23,6 +23,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	std::cout << "你好，世界" << std::endl;
 
 	Read_Accounts_From_File(File_Name);//读取文件内容到内存
+	Check_Unban_Status();//检查封禁情况
 
 	/*初始化GLFW*/
 	if (!glfwInit())
@@ -523,9 +524,9 @@ void Periodic_Check(std::stop_token token)
 
 		Check_Unban_Status();//检查封禁情况
 
-		if (Flag_Dirty == true)
+		if (Flag_Dirty == true) //数据已修改
 		{
-			Write_Accounts_To_File(File_Name);
+			Write_Accounts_To_File(File_Name);//写入文件
 
 			Flag_Dirty = false;
 		}
