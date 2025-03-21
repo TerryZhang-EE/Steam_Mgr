@@ -31,9 +31,9 @@ void Read_Accounts_From_File(const std::string& File_Name);//从文件读取数�
 void Write_Accounts_To_File(const std::string& File_Name);//从内存写入数据到文件
 void Draw_Table(void);
 void Draw_Buttons(void);
-void Launch_Process(const std::wstring& command);
+void Draw_Announcement(void);
+void Launch_Process(const std::wstring& command);//创建指定进程
 void Terminate_Process(const std::string& processName);// 结束指定的进程
 std::string Get_Steam_Path(void);
 void Check_Unban_Status(void);//遍历检查账号封禁情况
-//void Periodic_Check(void);
 void Periodic_Check(std::stop_token token);

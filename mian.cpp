@@ -1,28 +1,25 @@
 ﻿#include "main.h"
 #include <windows.h>
 
-//#pragma execution_character_set("utf-8") //设置程序运行的编码格式
-
-//bool Flag_Exit = false;
-bool Flag_Dirty = false;
+bool Flag_Dirty = false; //脏数据(未写入数据)标志位
 
 /*Windows窗口大小*/
 int Window_Width = 1280;
 int Window_Height = 720;
 
-static int Selected_Row = 0;
+static int Selected_Row = 0; //用户选中的行号
 
-std::string File_Name = "Temp.txt";
+const std::string Config_Path = "Config/"; //用户文件存放路径
+const std::string Config_File_Path = Config_Path + "Config.txt";//存放用户配置（账号）的文件
+
 std::vector<Steam_Conf> Steam_Array;
 
 //int main()
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	system("chcp 65001");
+	system("chcp 65001"); //终端设置UTF-8编码
 
-	std::cout << "你好，世界" << std::endl;
-
-	Read_Accounts_From_File(File_Name);//读取文件内容到内存
+	Read_Accounts_From_File(Config_File_Path);//读取文件内容到内存
 	Check_Unban_Status();//检查封禁情况
 
 	/*初始化GLFW*/
@@ -34,8 +31,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
 	/*创建窗口*/
 	GLFWwindow* window = glfwCreateWindow(Window_Width, Window_Height, "Steam_Mgr", nullptr, nullptr);
-
-	//glfwGetWindowSize(window, &Window_Width, &Window_Height);// 获取 GLFW 窗口的大小
 
 	if (!window)
 	{
@@ -72,8 +67,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	// 应用字体到 ImGui
 	io.FontDefault = font; // 设置默认字体
 
-	//ImGui::PushFont(font);  // 应用自定义字体
-
 	/*初始化ImGui的渲染实现*/
 	ImGui_ImplGlfw_InitForOpenGL(window, true);  // 使用 GLFW 和 OpenGL 初始化 ImGui
 	ImGui_ImplOpenGL3_Init("#version 130");  // OpenGL 3.x 版本（你可以根据自己的 OpenGL 版本调整）
@@ -100,6 +93,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
 		Draw_Table();//绘制表格
 		Draw_Buttons();//绘制按钮
+		Draw_Announcement();//绘制公告栏
 		/*绘制用户内容End*/
 
 		/*渲染 ImGui 内容*/
@@ -118,11 +112,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
-	Check_Thread.request_stop();//通知线程结束
+	Check_Thread.request_stop();//通知定时检查线程结束
 
-	//Flag_Exit = true;//通知 CheckThread 线程退出
-
-	//Check_Thread.request_stop();	// 等待定时检查线程结束
+	Write_Accounts_To_File(Config_File_Path);//写入数据到文件
 
 	return 0;
 }
@@ -288,11 +280,11 @@ void Draw_Table(void)
 /*绘制按钮*/
 void Draw_Buttons(void)
 {
-	ImVec2 Temp_Pos;
+	//ImVec2 Temp_Pos;
 	ImVec2 Button_Size;//按钮尺寸
 	ImVec2 Button_Pos; //按钮位置
 
-	ImVec2 ImGui_Size = ImVec2(300 - 25, (Window_Height - 50) / 2);
+	ImVec2 ImGui_Size = ImVec2(300 - 25, (Window_Height - 50) / 2); //按钮界面尺寸
 	ImVec2 ImGui_Pos = ImVec2(Window_Width - 25 - ImGui_Size.x, ((Window_Height / 2) - (ImGui_Size.y / 2))); //居中
 
 	float Button_Width = 100.0f;
@@ -372,6 +364,31 @@ void Draw_Buttons(void)
 	ImGui::End();
 }
 
+void Draw_Announcement(void)
+{
+	ImVec2 ImGui_Size = ImVec2(300 - 25, ((Window_Height - 50) / 4) - 25); //公告栏界面尺寸
+	ImVec2 ImGui_Pos = ImVec2(Window_Width - 25 - ImGui_Size.x, Window_Height - 25 - ImGui_Size.y);
+
+	/*设置按钮窗口的位置和大小*/
+	ImGui::SetNextWindowPos(ImGui_Pos, ImGuiCond_Always);// 设定窗口位置 始终生效
+	ImGui::SetNextWindowSize(ImGui_Size, ImGuiCond_Always);//设定窗口大小 始终生效
+
+	// 临时设置文本颜色
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(211, 211, 211, 211));
+
+	/*禁止窗口的大小调整 去掉窗口的标题栏*/
+	ImGui::Begin("Anno", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+	{
+		ImGui::SetCursorPos(ImVec2(25, 25));
+
+		ImGui::Text("QQ群: 1037699373\n软件版本: V0.2.0");
+
+	}
+	ImGui::End();
+
+	ImGui::PopStyleColor();// 恢复默认的文本颜色
+}
+
 /*创建线程*/
 void Launch_Process(const std::wstring& command)
 {
@@ -436,7 +453,6 @@ std::string Get_Steam_Path(void)
 		return "";  // 如果打开失败，返回空字符串
 	}
 
-	//char buffer[MAX_PATH];  // 用于存储Steam路径
 	wchar_t buffer[MAX_PATH];  // 用于存储Steam路径
 	DWORD bufferSize = sizeof(buffer);
 
@@ -526,7 +542,7 @@ void Periodic_Check(std::stop_token token)
 
 		if (Flag_Dirty == true) //数据已修改
 		{
-			Write_Accounts_To_File(File_Name);//写入文件
+			Write_Accounts_To_File(Config_File_Path);//写入文件
 
 			Flag_Dirty = false;
 		}
