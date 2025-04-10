@@ -204,7 +204,7 @@ void Write_Accounts_To_File(const std::string& File_Name)
 /*绘制表格*/
 void Draw_Table(void)
 {
-    ImVec2 ImGui_Size = ImVec2(Window_Width - 50 - 300, Window_Height - 50);//右侧留出300放按钮
+    ImVec2 ImGui_Size = ImVec2(Window_Width - 50 - 350, Window_Height - 50);//右侧留出350放按钮
 
     /*设置表格窗口的位置和大小*/
     ImGui::SetNextWindowPos(ImVec2(25, 25), ImGuiCond_Always);// 设定窗口位置 始终生效
@@ -284,14 +284,14 @@ void Draw_Buttons(void)
     ImVec2 Button_Size;//按钮尺寸
     ImVec2 Button_Pos; //按钮位置
 
-    ImVec2 ImGui_Size = ImVec2(300 - 25, (Window_Height - 50) / 2); //按钮界面尺寸
-    ImVec2 ImGui_Pos = ImVec2(Window_Width - 25 - ImGui_Size.x, ((Window_Height / 2) - (ImGui_Size.y / 2))); //居中
+    ImVec2 ImGui_Size = ImVec2(350 - 25, (Window_Height - 50) / 20 * 12); //按钮界面尺寸（6/10）
+    ImVec2 ImGui_Pos = ImVec2(Window_Width - 25 - ImGui_Size.x, 25);
 
-    float Button_Width = 100.0f;
+    float Button_Width = 110.0f;
     float Button_Height = Button_Width / 1.618f;
 
     float Spacing_X = (ImGui_Size.x - (Button_Width * 2)) / 3; //计算按钮间距
-    float Spacing_Y = (ImGui_Size.y - (Button_Height * 3)) / 4;
+    float Spacing_Y = (ImGui_Size.y - (Button_Height * 4)) / 5;
 
     /*设置按钮窗口的位置和大小*/
     ImGui::SetNextWindowPos(ImGui_Pos, ImGuiCond_Always);// 设定窗口位置 始终生效
@@ -300,16 +300,12 @@ void Draw_Buttons(void)
     /*禁止窗口的大小调整 去掉窗口的标题栏*/
     ImGui::Begin("Buttons", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
     {
-        /*登录/启动*/
-        /*一天/三天*/
-        /*永久/清除*/
-
         Button_Size = ImVec2(Button_Width, Button_Height);
         Button_Pos = ImVec2(Spacing_X, Spacing_Y);
 
         ImGui::SetCursorPos(Button_Pos);
 
-        if (ImGui::Button("登录", Button_Size) == true) //上号
+        if (ImGui::Button("上号", Button_Size) == true) //上号
         {
             /*先关闭 Steam 和 PUBG 进程*/
             Terminate_Process("TslGame.exe");
@@ -320,14 +316,36 @@ void Draw_Buttons(void)
 
         ImGui::SameLine(Spacing_X + Button_Width + Spacing_X);//同行显示
 
-        if (ImGui::Button("启动", Button_Size) == true)//启动游戏
+        if (ImGui::Button("下号", Button_Size) == true) //下号
         {
-            system("start steam://rungameid/578080");  // 启动 PUBG
+            /*关闭 Steam 和 PUBG 进程*/
+            Terminate_Process("TslGame.exe");
+            Terminate_Process("steam.exe");
         }
 
         /*换行显示*/
         Button_Pos.x = Spacing_X;
         Button_Pos.y = Spacing_Y + (Button_Height + Spacing_Y) * 1;
+        ImGui::SetCursorPos(Button_Pos);
+
+        if (ImGui::Button("启动", Button_Size) == true)//启动游戏
+        {
+            //system("start steam://rungameid/578080");
+
+            LaunchSteamGame(L"578080");// 启动 PUBG
+        }
+
+        ImGui::SameLine(Spacing_X + Button_Width + Spacing_X);//同行显示
+
+        if (ImGui::Button("关闭", Button_Size) == true) //关闭游戏
+        {
+            /*关闭PUBG 进程*/
+            Terminate_Process("TslGame.exe");
+        }
+
+        /*换行显示*/
+        Button_Pos.x = Spacing_X;
+        Button_Pos.y = Spacing_Y + (Button_Height + Spacing_Y) * 2;
         ImGui::SetCursorPos(Button_Pos);
 
         if (ImGui::Button("一天", Button_Size) == true)//检测一天
@@ -345,7 +363,7 @@ void Draw_Buttons(void)
         }
 
         Button_Pos.x = Spacing_X;
-        Button_Pos.y = Spacing_Y + (Button_Height + Spacing_Y) * 2;
+        Button_Pos.y = Spacing_Y + (Button_Height + Spacing_Y) * 3;
 
         ImGui::SetCursorPos(Button_Pos);
 
@@ -369,7 +387,7 @@ void Draw_Buttons(void)
 
 void Draw_Announcement(void)
 {
-    ImVec2 ImGui_Size = ImVec2(300 - 25, ((Window_Height - 50) / 4) - 25); //公告栏界面尺寸
+    ImVec2 ImGui_Size = ImVec2(350 - 25, ((Window_Height - 50) / 20 * 7)); //公告栏界面尺寸（1/4）
     ImVec2 ImGui_Pos = ImVec2(Window_Width - 25 - ImGui_Size.x, Window_Height - 25 - ImGui_Size.y);
 
     /*设置按钮窗口的位置和大小*/
@@ -384,62 +402,11 @@ void Draw_Announcement(void)
     {
         ImGui::SetCursorPos(ImVec2(25, 25));
 
-        ImGui::Text("QQ群: 1037699373\n软件版本: V0.2.1");
-
+        ImGui::Text("账号数据存放于\nConfig/Config.txt\n请按格式编辑\n\nQQ群: 1037699373\n软件版本: V1.0.0");
     }
     ImGui::End();
 
     ImGui::PopStyleColor();// 恢复默认的文本颜色
-}
-
-/*创建线程*/
-void Launch_Process(const std::wstring& command)
-{
-    // 创建一个进程信息结构体
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    ZeroMemory(&pi, sizeof(pi));
-
-    // 将 std::wstring 转换为可修改的 wchar_t* 类型
-    wchar_t* command_ptr = const_cast<wchar_t*>(&command[0]);
-
-    // 使用 CreateProcess 启动 Steam
-    if (!CreateProcessW(
-        NULL,               // 可执行文件名
-        command_ptr,        // 宽字符命令行参数
-        NULL,               // 进程句柄不可继承
-        NULL,               // 线程句柄不可继承
-        FALSE,              // 不继承文件句柄
-        0,                  // 默认创建新进程
-        NULL,               // 使用当前环境
-        NULL,               // 使用当前目录
-        &si,                // 启动信息
-        &pi)                // 进程信息
-        )
-    {
-        std::cerr << "创建进程失败，错误代码：" << GetLastError() << std::endl;
-    }
-    else
-    {
-        // 进程创建成功，可以继续执行后续代码
-        std::cout << "进程启动命令已发送！" << std::endl;
-
-        // 等待进程结束
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
-}
-
-// 结束指定的进程
-void Terminate_Process(const std::string& processName)
-{
-    std::cout << "正在关闭 " << processName << " ..." << std::endl;
-    std::string command = "taskkill /f /im " + processName;  // 构造命令
-    system(command.c_str());  // 执行命令
 }
 
 /*获取Steam路径*/
@@ -552,4 +519,71 @@ void Periodic_Check(std::stop_token token)
     }
 
     std::cout << "定时检查线程退出" << std::endl;
+}
+
+/*创建线程*/
+void Launch_Process(const std::wstring& command)
+{
+    // 创建一个进程信息结构体
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    // 将 std::wstring 转换为可修改的 wchar_t* 类型
+    wchar_t* command_ptr = const_cast<wchar_t*>(&command[0]);
+
+    // 使用 CreateProcess 启动 Steam
+    if (!CreateProcessW(
+        NULL,               // 可执行文件名
+        command_ptr,        // 宽字符命令行参数
+        NULL,               // 进程句柄不可继承
+        NULL,               // 线程句柄不可继承
+        FALSE,              // 不继承文件句柄
+        0,                  // 默认创建新进程
+        NULL,               // 使用当前环境
+        NULL,               // 使用当前目录
+        &si,                // 启动信息
+        &pi)                // 进程信息
+        )
+    {
+        std::cerr << "创建进程失败，错误代码：" << GetLastError() << std::endl;
+    }
+    else
+    {
+        // 进程创建成功，可以继续执行后续代码
+        std::cout << "进程启动命令已发送！" << std::endl;
+
+        // 等待进程结束
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+}
+
+// 结束指定的进程
+void Terminate_Process(const std::string& processName)
+{
+    std::cout << "正在关闭 " << processName << " ..." << std::endl;
+    std::string command = "taskkill /f /im " + processName;  // 构造命令
+    system(command.c_str());  // 执行命令
+}
+
+/*启动Steam游戏*/
+void LaunchSteamGame(const std::wstring& game_id)
+{
+    // 启动 游戏的命令
+    std::wstring command = L"steam://rungameid/" + game_id;
+
+    // 使用 ShellExecute 启动 Steam的游戏
+    if (ShellExecuteW(NULL, L"open", command.c_str(), NULL, NULL, SW_SHOWNORMAL) > (HINSTANCE)32)
+    {
+        std::cout << "Steam 启动并启动 PUBG!" << std::endl;
+    }
+    else
+    {
+        std::cerr << "启动 Steam 失败，错误代码：" << GetLastError() << std::endl;
+    }
 }
